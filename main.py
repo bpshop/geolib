@@ -10,6 +10,8 @@ xyz = swiss_projection.etrs2ch(xyz)
 llh = swiss_projection.xyz2llh(xyz, "Bessel1841")
 ENU = swiss_projection.lv95_projection(llh)
 
+ENU = [3200000, 1500000, 400]
+
 # Inverse example
 llh = swiss_projection.inverse_lv95_projection(ENU)
 xyz = swiss_projection.llh2xyz(llh, "Bessel1841")
