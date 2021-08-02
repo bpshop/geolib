@@ -13,15 +13,14 @@ def deg_to_dms(deg, type='lat'):
         return '{} {} {:.6f} {}'.format(abs(d), abs(m), abs(s), compass_str)
 
 
-def llh2xyz(llh, datum):
-        # Lambda, Phi, Height
+def llh2xyz(llh, datum="WGS84"):
+        # Lambda, Phi, Height in RADIANS !
         # Ellipsoidal to geocentric
         lamb = llh[0]
         phi = llh[1]
         h = llh[2]
         
         a = ellipsoid.ell[ellipsoid.ell_index[datum]][0]
-        b = ellipsoid.ell[ellipsoid.ell_index[datum]][1]
         e2 = ellipsoid.ell[ellipsoid.ell_index[datum]][3]
         Rn = a / np.sqrt(1.0-e2*np.sin(phi)**2)
         X = (Rn+h)*np.cos(phi)*np.cos(lamb)
@@ -149,23 +148,47 @@ def xyz2llh(xyz, datum):
 
 
 def lv95_to_wgs84(enh):
+        # IN DEGREES
         llh = inverse_lv95_projection(enh)
         xyz = llh2xyz(llh, "Bessel1841")
         xyz = ch2etrs(xyz)
-        llh = xyz2llh(xyz, "WGS84")
+        llh_deg = xyz2llh(xyz, "WGS84")
 
-        llh[0] = 180 / np.pi * llh[0]
-        llh[1] = 180 / np.pi * llh[1]
+        llh_deg[0] = 180 / np.pi * llh_deg[0]
+        llh_deg[1] = 180 / np.pi * llh_deg[1]
 
-        return llh
+        return llh_deg
 
 
-def wgs84_to_lv95(llh):
-        llh[0] = np.pi / 180 * llh[0]
-        llh[1] = np.pi / 180 * llh[1]
+def wgs84_to_lv95(llh_deg):
+        # IN DEGREES !
+        llh_rad = np.zeros(3)
+        llh_rad[2] = llh_deg[2]
+        
+        llh_rad[0] = np.pi / 180 * llh_deg[0]
+        llh_rad[1] = np.pi / 180 * llh_deg[1]
 
-        xyz = llh2xyz(llh, "WGS84")
+        xyz = llh2xyz(llh_rad, "WGS84")
         xyz = etrs2ch(xyz)
-        llh = xyz2llh(xyz, "Bessel1841")
-        enh = lv95_projection(llh)
+        ll_out = xyz2llh(xyz, "Bessel1841")
+        enh = lv95_projection(ll_out)
         return enh
+    
+def topocentric(lam, phi):
+    # NORTH, WEST, UP !
+    #
+    # Usage:
+    #
+    # topo = swiss_projection.topocentric(lon_c, lat_c)
+    # xyz0 = np.array(swiss_projection.llh2xyz([lon_c, lat_c, h_c]))
+    # xyz1 = np.array(swiss_projection.llh2xyz([lon_c, lat_c+0.00001, h_c]))
+    # temp = np.matmul(topo, xyz1-xyz0)
+    #
+    #
+    topo = np.zeros((3,3))
+    topo[0,:] = [-np.sin(phi)*np.cos(lam), -np.sin(phi)*np.sin(lam), np.cos(phi)]
+    topo[1,:] = [-np.sin(lam), np.cos(lam), 0]
+    topo[2,:] = [np.cos(phi)*np.cos(lam), np.cos(phi)*np.sin(lam), np.sin(phi)]
+    return topo
+    
+    
