@@ -42,3 +42,10 @@ ENU_mobile = np.array(swiss_projection.lv95_projection(llh))
 print(ENU_mobile)
 
 print(ENU_fix - ENU_mobile)
+
+# meridian convergence
+ENU = [2679520.05,  1212273.44, 400]
+llh, mu = swiss_projection.inverse_lv95_projection(ENU, True)
+
+mu = mu*200/np.pi
+print(mu)

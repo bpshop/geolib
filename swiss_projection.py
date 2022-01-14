@@ -27,10 +27,10 @@ def llh2xyz(llh, datum="WGS84"):
         Y = (Rn+h)*np.cos(phi)*np.sin(lamb)
         Z = (Rn*(1.0-e2)+h)*np.sin(phi)
 
-        return [X, Y, Z]
+        return [X, Y, Z]       
 
 
-def lv95_projection(llh):
+def lv95_projection(llh, meridian_conv = False):
         lamb = llh[0]
         phi = llh[1]
         h = llh[2]
@@ -57,6 +57,11 @@ def lv95_projection(llh):
 
         l = alpha*(lamb - lambda0)
 
+        # meridian convergence
+        mu = np.arctan(np.sin(b0)*np.sin(l) / (
+            np.cos(b0)*np.cos(b)+np.sin(b0)*np.sin(b)*np.cos(l)
+            ))
+
         # equator system
         l_mean = np.arctan(np.sin(l)/(np.sin(b0)*np.tan(b)+np.cos(b0)*np.cos(l)))
         b_mean = np.arcsin(np.cos(b0)*np.sin(b)-np.sin(b0)*np.cos(b)*np.cos(l))
@@ -65,10 +70,14 @@ def lv95_projection(llh):
         X = R/2.0 * np.log((1.0+np.sin(b_mean))/(1.0-np.sin(b_mean))) + 1200000.0
 
         ENH = [Y, X, h]
-        return ENH
+        
+        if meridian_conv:
+            return ENH, mu
+        else:
+            return ENH
 
 
-def inverse_lv95_projection(enh):
+def inverse_lv95_projection(enh, meridian_conv = False):
         ELV95 = enh[0]
         NLV95 = enh[1]
         h_ell = enh[2]
@@ -99,6 +108,11 @@ def inverse_lv95_projection(enh):
 
         lamb = lambda0 + l/alpha
 
+        # meridian convergence
+        mu = np.arctan(np.sin(b0)*np.sin(l) / (
+            np.cos(b0)*np.cos(b)+np.sin(b0)*np.sin(b)*np.cos(l)
+            ))
+
         # approx
         phi = b
 
@@ -107,8 +121,12 @@ def inverse_lv95_projection(enh):
             S = (1.0/alpha)*(np.log(np.tan(np.pi/4.0+b/2.0))-K)+E*np.log(np.tan(np.pi/4.0+np.arcsin(E*np.sin(phi))/2.0))
             phi = 2.0*np.arctan(np.exp(S))-np.pi/2
 
-        return [lamb, phi, h_ell]
-
+        llh = [lamb, phi, h_ell]
+        
+        if meridian_conv:
+            return llh, mu
+        else:
+            return llh
 
 def ch2etrs(xyz):
         X = xyz[0] + 674.374
@@ -148,17 +166,14 @@ def xyz2llh(xyz, datum):
 
 
 def lv95_to_wgs84(enh):
-        # IN DEGREES
-        llh = inverse_lv95_projection(enh)
-        xyz = llh2xyz(llh, "Bessel1841")
-        xyz = ch2etrs(xyz)
+        # IN DEGREES        
+        xyz = lv95_to_xyz(enh)        
         llh_deg = xyz2llh(xyz, "WGS84")
 
         llh_deg[0] = 180 / np.pi * llh_deg[0]
         llh_deg[1] = 180 / np.pi * llh_deg[1]
 
         return llh_deg
-
 
 def wgs84_to_lv95(llh_deg):
         # IN DEGREES !
@@ -169,13 +184,27 @@ def wgs84_to_lv95(llh_deg):
         llh_rad[1] = np.pi / 180 * llh_deg[1]
 
         xyz = llh2xyz(llh_rad, "WGS84")
+        enh = xyz_to_lv95(xyz)
+        
+        return enh
+
+def lv95_to_xyz(enh):
+        # IN DEGREES
+        llh = inverse_lv95_projection(enh)
+        xyz = llh2xyz(llh, "Bessel1841")
+        xyz = ch2etrs(xyz)        
+        return xyz
+
+
+def xyz_to_lv95(xyz):
         xyz = etrs2ch(xyz)
         ll_out = xyz2llh(xyz, "Bessel1841")
         enh = lv95_projection(ll_out)
         return enh
     
 def topocentric(lam, phi):
-    # NORTH, WEST, UP !
+    # NORTH, EAST, UP !
+    # in radians !
     #
     # Usage:
     #
