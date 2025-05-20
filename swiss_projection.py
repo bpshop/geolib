@@ -154,12 +154,15 @@ def xyz2llh(xyz, datum):
         ZETRS = xyz[2]
 
         p = np.sqrt(XETRS**2+YETRS**2)
-        phi_global = np.arctan(ZETRS/((1.0-e2)*p))
-        lamb_global = np.arctan(YETRS/XETRS)
+        # phi_global = np.arctan(ZETRS/((1.0-e2)*p))
+        # lamb_global = np.arctan(YETRS/XETRS)
+        phi_global = np.arctan2(ZETRS, ((1.0-e2)*p))
+        lamb_global = np.arctan2(YETRS, XETRS)
         h_global = 0
         for i in range(20):
             Rn = a / np.sqrt(1.0-e2*np.sin(phi_global)**2)
-            phi_global = np.arctan(ZETRS/(p*(1.0-e2*(Rn)/(Rn+h_global))))
+            # phi_global = np.arctan(ZETRS/(p*(1.0-e2*(Rn)/(Rn+h_global))))
+            phi_global = np.arctan2(ZETRS, (p*(1.0-e2*(Rn)/(Rn+h_global))))
             h_global = p/np.cos(phi_global)-Rn
 
         return [lamb_global, phi_global, h_global]
